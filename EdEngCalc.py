@@ -6,6 +6,7 @@ def main():
     owned, required = load()
     needed_materials = {"Raw": compare(owned["Raw"], required["Raw"]), "Manufactured": compare(owned["Manufactured"], required["Manufactured"]), "Encoded": compare(owned["Encoded"], required["Encoded"])}
     display(needed_materials)
+    input()
 
 def load():
     "Returns a dictionary of owned materials and required materials"
