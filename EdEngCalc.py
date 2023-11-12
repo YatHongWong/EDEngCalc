@@ -4,9 +4,15 @@ import glob
 import sqlite3
 
 def main():
+    with sqlite3.connect("EDEC.db") as con:
+        cur = con.cursor()
+        cur.execute("UPDATE materials SET needed = 0") # Reset needed column in database
+        con.commit()
     owned, required = load()
-    needed_materials = {"Raw": compare(owned["Raw"], required["Raw"]), "Manufactured": compare(owned["Manufactured"], required["Manufactured"]), "Encoded": compare(owned["Encoded"], required["Encoded"])}
-    display(needed_materials)
+    print(required)
+    for type in ["Raw", "Manufactured", "Encoded"]:
+        compare(owned[type], required[type])
+    display()
     input()
 
 def load():
@@ -52,22 +58,37 @@ def load_required(type):
 
 
 def compare(owned, required):
-    difference = {}
     for name in required:
         count = int(required[name])
         if owned.get(name) == None:
-            difference[name] = count
+            needed = 0
         else:
-            difference[name] = count - owned[name]
-    return difference
+            needed = count - owned[name]
+        if needed > 0:
+            with sqlite3.connect("EDEC.db") as con:
+                cur = con.cursor()
+                print("Updated", name, needed)
+                cur.execute("UPDATE materials SET needed = ? WHERE name = ?", (needed, name))
+                con.commit()
+    return
         
-def display(needed_materials):
-    for type in needed_materials:
-        print("------------------ " + type + " Material -------------------")
-        for material in needed_materials[type]:
-            if needed_materials[type][material] > 0:
-                print(material + ":", needed_materials[type][material])
-                
+def display():
+    for type in ["Raw", "Manufactured", "Encoded"]:
+        print("\n------------------ " + type + " Material -------------------\n")
+        with sqlite3.connect("EDEC.db") as con:
+                cur = con.cursor()
+                cur.execute("SELECT DISTINCT category FROM materials WHERE type = ?", (type,))
+                categories = cur.fetchall()
+                for category in categories:
+                    cur.execute("SELECT grade, name, needed FROM materials WHERE category = ? AND needed IS NOT 0 ORDER BY grade DESC", category)
+                    res = cur.fetchall()
+                    if res != []:
+                        print("--" + category[0] + "--")
+
+                    for row in res:
+                        grade, name, amount = row
+                        print(f"G{grade} | {name}: {amount}")
+
 
 if __name__ == "__main__":
     main()
